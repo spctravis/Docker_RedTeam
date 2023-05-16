@@ -1,0 +1,35 @@
+---
+- hosts: all
+  
+  tasks:
+
+  # Create Portainer Volume
+  # --
+  # 
+  - name: Create new Volume
+    community.docker.docker_volume:
+      name: portainer_data
+
+  # Deploy Portainer
+  # --
+  #   
+  - name: Deploy Portainer
+    community.docker.docker_container:
+      name: portainer
+      image: "docker.io/portainer/portainer-ce"
+      ports:
+        - "8000:8000"
+        - "9000:9000"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+        - portainer_data:/data
+      restart_policy: always
+
+  - name: Deploy Watchtower
+    community.docker.docker_container:
+      name: watchtower
+      image: container/watchtower
+      command: --schedule "0 0 4 * * *"
+      volumes:
+        - /var/run/docker.sock:/var/run/docker.sock
+      restart_policy: always

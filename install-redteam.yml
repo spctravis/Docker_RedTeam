@@ -1,0 +1,53 @@
+---
+- hosts: all
+  tasks:
+
+  - name: Create Network
+    community.docker.docker_network:
+      name: redteam
+      ipam_config:
+      - subnet: 172.10.10.0/24
+        gateway: 172.10.10.1
+        iprange: 172.10.10.0/24
+
+  - name: pull Etherpad
+    community.docker.docker_image:
+      name: etherpad
+      source: pull
+      tag: latest
+
+  - name: run Etherpad
+    community.docker.docker_container:
+      name: etherpad
+      state: started
+      detach: true
+      ports:
+      exposed_ports: 
+      - 9001
+      - 80:9001
+      networks:
+      - name: redteam
+      volumes: "etherpad:/opt/etherpad-lite/var"
+
+# https://github.com/l50/ansible-sliver/tree/main
+  - name: Sliver Deploy
+    community.docker.docker_container:
+      name: sliver
+      image: l50.sliver:latest
+      ports:
+      - "8888:8888"
+      - "31337:31337"
+      - "53:53"
+      networks:
+        - name: redteam
+      become: true
+      vars:
+        setup_systemd: true
+        server_path: /root/sliver-server
+        client_path: /usr/local/bin/sliver
+        sliver_service_path: /etc/systemd/system/sliver.service
+        sliver_client_config_path: /root/.sliver-client/configs
+      roles:
+        - role: l50.sliver
+
+  - name: Deploy Apache
